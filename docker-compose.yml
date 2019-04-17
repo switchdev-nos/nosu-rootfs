@@ -1,0 +1,10 @@
+version: '2'
+services:
+  nosu-rootfs:
+    build: ./
+    image: nosu-rootfs
+    privileged: true
+    volumes:
+      - ".:/mnt"
+    working_dir: /mnt
+    command: [/mnt/build.sh ]

@@ -1,0 +1,9 @@
+#!/bin/sh
+exec tail -n +3 $0
+
+# Menu entry for ONIE
+menuentry "ONIE" {
+  search --no-floppy --label --set=root ONIE-BOOT
+  echo "Loading ONIE..."
+  chainloader +1
+}
