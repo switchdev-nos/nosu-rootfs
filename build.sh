@@ -71,13 +71,13 @@ chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-rec
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install /tmp/kernel/*.deb"
 
 #### network services
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install openssh-server snmpd ntp isc-dhcp-relay isc-dhcp-client"
+chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install openssh-server xinetd telnetd snmpd ntp isc-dhcp-relay isc-dhcp-client"
 
 #### network tools
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install iproute2 libnl-route-3-200 ethtool bridge-utils net-tools iputils-ping traceroute tcpdump tshark bwm-ng"
 
 #### tools
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install sudo rsyslog lm-sensors smartmontools curl wget lsb-release gnupg2 ca-certificates vim nano less pciutils usbutils lshw dmidecode sosreport python locales"
+chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install sudo rsyslog lm-sensors smartmontools curl wget lsb-release gnupg2 ca-certificates vim nano less dnsutils pciutils usbutils lshw dmidecode lsof parted sosreport python locales"
 
 #### FRR protocol stack
 chroot "$ROOTDIR" sh -c "curl -s https://deb.frrouting.org/frr/keys.asc | apt-key add -"
@@ -118,19 +118,23 @@ rsync -avz --chown root:root "$ROOTCONF_DIR/*" "$ROOTDIR"
 echo "== Finalizing system config"
 chroot "$ROOTDIR" sh -c "chmod +x /etc/rc.local"
 chroot "$ROOTDIR" sh -c "ssh-keygen -A"
+chroot "$ROOTDIR" sh -c "echo | ssh-keygen -q -t rsa -P ''"
+chroot "$ROOTDIR" sh -c "su - $USERNAME -c 'echo | ssh-keygen -q -t rsa'"
 chroot "$ROOTDIR" sh -c "systemctl disable motd-news.timer"
-chroot "$ROOTDIR" sh -c "systemctl enable systemd-resolved"
-chroot "$ROOTDIR" sh -c "systemctl enable sshd.service"
-chroot "$ROOTDIR" sh -c "systemctl enable hw-management.service"
-chroot "$ROOTDIR" sh -c "systemctl enable lldpd.service"
 chroot "$ROOTDIR" sh -c "systemctl disable keepalived.service"
-chroot "$ROOTDIR" sh -c "systemctl disable keepalived.service"
+chroot "$ROOTDIR" sh -c "systemctl disable lldpad.service"
 chroot "$ROOTDIR" sh -c "systemctl disable isc-dhcp-relay.service"
 chroot "$ROOTDIR" sh -c "systemctl disable isc-dhcp-relay6.service"
 chroot "$ROOTDIR" sh -c "systemctl disable smartd.service"
 chroot "$ROOTDIR" sh -c "systemctl disable smartmontools.service"
 chroot "$ROOTDIR" sh -c "systemctl disable postfix.service"
 chroot "$ROOTDIR" sh -c "systemctl disable bird.service"
+chroot "$ROOTDIR" sh -c "systemctl disable vsftpd.service"
+chroot "$ROOTDIR" sh -c "systemctl disable xinetd.service"
+chroot "$ROOTDIR" sh -c "systemctl enable systemd-resolved"
+chroot "$ROOTDIR" sh -c "systemctl enable sshd.service"
+chroot "$ROOTDIR" sh -c "systemctl enable hw-management.service"
+chroot "$ROOTDIR" sh -c "systemctl enable lldpd.service"
 chroot "$ROOTDIR" sh -c "systemctl enable ntp.service"
 chroot "$ROOTDIR" sh -c "systemctl enable rsyslog.service"
 
@@ -144,7 +148,8 @@ chroot "$ROOTDIR" sh -c "rm -f /etc/localtime && ln -s /usr/share/zoneinfo/$TIME
 echo "== Cleaning up"
 chroot "$ROOTDIR" sh -c "rm -f /etc/resolv.conf && ln -sf /var/run/systemd/resolve/resolv.conf /etc/resolv.conf"
 chroot "$ROOTDIR" sh -c "apt autoremove -y && apt clean all"
-chroot "$ROOTDIR" sh -c "rm -fr /tmp/*"
+rm -rf "$ROOTDIR/tmp"/*
+rm -rf "$ROOTDIR/var/lib/apt/lists"/*
 chroot "$ROOTDIR" sh -c "umount /proc; umount /sys; umount /dev/pts"
 
 # pack image
