@@ -112,7 +112,7 @@ chroot "$ROOTDIR" sh -c "useradd -m -s /bin/bash -G sudo -p $USERPASSC $USERNAME
 chroot "$ROOTDIR" sh -c "usermod -p $USERPASSC root"
 
 # copy the contents of the rootconf folder to the rootfs
-rsync -avz --chown root:root "$ROOTCONF_DIR/*" "$ROOTDIR"
+rsync -avz --chown root:root "$ROOTCONF_DIR"/* "$ROOTDIR"
 
 # post config
 echo "== Finalizing system config"
