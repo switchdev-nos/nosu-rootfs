@@ -1,9 +1,8 @@
 #!/bin/bash
 
 ROOTCONF_DIR="./rootconf"
-ROOTFS_FILE="ubuntu1804_mlnx.tar.xz"
 ROOTDIR="/tmp/rootfs"
-UBUNTU_BASE_URL="http://cdimage.ubuntu.com/ubuntu-base/releases/18.04.2/release/ubuntu-base-18.04-base-amd64.tar.gz"
+UBUNTU_BASE_URL="http://cdimage.ubuntu.com/ubuntu-base/releases/18.04.3/release/ubuntu-base-18.04-base-amd64.tar.gz"
 FWURL="https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/mellanox"
 FWDIR="$ROOTDIR/lib/firmware/mellanox"
 FRRVER="frr-stable"
@@ -23,6 +22,21 @@ fail() {
 # check root privileges
 [ $(id -g) = 0 ] || fail "Need root privilegies. Run 'sudo $0'"
 
+if [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
+  echo "Usage: $0 [ENV_FILE]"
+  exit 0
+fi
+
+if [ -n "$1" ]; then
+  if [ -r "$1" ]; then
+    set -a
+    . "$1"
+    set +a
+  else
+    fail "ENV_FILE not readable or missing"
+  fi
+fi
+
 if [ -d "$ROOTDIR" ]; then
 echo "== Cleaning up $ROOTDIR"
 rm -fr $ROOTDIR
@@ -40,7 +54,7 @@ cp -Rf ./kernel "$ROOTDIR/tmp"
 cp -Rf ./packages "$ROOTDIR/tmp"
 
 # download mellanox firmware
-echo "== Loading Ubuntu base image into $ROOTDIR"
+echo "== Loading Mellanox switch firmware"
 mkdir -p $FWDIR
 for file in $(curl -s $FWURL |
                    sed -e 's/\(<[^<][^<]*>\)//g' |
@@ -62,7 +76,7 @@ chroot "$ROOTDIR" sh -c "apt -yqq update --no-install-recommends && apt -yqq upg
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yqq upgrade --no-install-recommends"
 
 #### systemd
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install systemd systemd-sysv udev dbus"
+chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install systemd systemd-sysv udev dbus ifupdown2"
 
 #### grub
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install grub-pc initramfs-tools"
@@ -71,7 +85,7 @@ chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-rec
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install /tmp/kernel/*.deb"
 
 #### network services
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install openssh-server xinetd telnetd snmpd ntp isc-dhcp-relay isc-dhcp-client"
+chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install openssh-server update-inetd telnetd snmpd snmptrapd ntp isc-dhcp-relay isc-dhcp-client"
 
 #### network tools
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install iproute2 libnl-route-3-200 ethtool bridge-utils net-tools iputils-ping traceroute tcpdump tshark bwm-ng"
@@ -79,19 +93,31 @@ chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-rec
 #### tools
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install sudo rsyslog lm-sensors smartmontools curl wget lsb-release gnupg2 ca-certificates vim nano less dnsutils pciutils usbutils lshw dmidecode lsof parted sosreport python locales"
 
+RELEASE=$(chroot "$ROOTDIR" sh -c "lsb_release -s -c")
 #### FRR protocol stack
 chroot "$ROOTDIR" sh -c "curl -s https://deb.frrouting.org/frr/keys.asc | apt-key add -"
-RELEASE=$(chroot "$ROOTDIR" sh -c "lsb_release -s -c")
 chroot "$ROOTDIR" sh -c "echo 'deb https://deb.frrouting.org/frr $RELEASE $FRRVER' | tee /etc/apt/sources.list.d/frr.list"
 chroot "$ROOTDIR" sh -c "apt update"
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install frr frr-pythontools"
 chroot "$ROOTDIR" sh -c "echo '#deb https://deb.frrouting.org/frr $RELEASE $FRRVER' | tee /etc/apt/sources.list.d/frr.list"
+
+#### Keepalived
+chroot "$ROOTDIR" sh -c "echo 'deb http://ppa.launchpad.net/hnakamur/keepalived/ubuntu $RELEASE main' | tee /etc/apt/sources.list.d/keepalived.list"
+chroot "$ROOTDIR" sh -c "apt update"
+chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install keepalived"
+chroot "$ROOTDIR" sh -c "echo '#deb http://ppa.launchpad.net/hnakamur/keepalived/ubuntu $RELEASE main' | tee /etc/apt/sources.list.d/keepalived.list"
 
 #### custom packages
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install /tmp/packages/*.deb"
 
 # CONFIGURE ADDITIONAL SERVICES
 echo "== Configuring system"
+
+# version information
+if [ -n "$NOS_VERSION" ]; then
+echo "VARIANT=nosu" >> "$ROOTDIR/etc/os-release"
+echo "VARIANT_ID=$NOS_VERSION" >> "$ROOTDIR/etc/os-release"
+fi
 
 # hostname config
 chroot "$ROOTDIR" sh -c "echo $HOSTNAME > /etc/hostname"
@@ -130,13 +156,18 @@ chroot "$ROOTDIR" sh -c "systemctl disable smartmontools.service"
 chroot "$ROOTDIR" sh -c "systemctl disable postfix.service"
 chroot "$ROOTDIR" sh -c "systemctl disable bird.service"
 chroot "$ROOTDIR" sh -c "systemctl disable vsftpd.service"
-chroot "$ROOTDIR" sh -c "systemctl disable xinetd.service"
+chroot "$ROOTDIR" sh -c "systemctl disable inetd.service"
+chroot "$ROOTDIR" sh -c "systemctl disable snmpd.service"
+chroot "$ROOTDIR" sh -c "systemctl disable ntp.service"
+chroot "$ROOTDIR" sh -c "systemctl disable vsftpd.service"
+chroot "$ROOTDIR" sh -c "systemctl disable ptmd.service"
+chroot "$ROOTDIR" sh -c "systemctl disable mlnx-eswitch.service"
 chroot "$ROOTDIR" sh -c "systemctl enable systemd-resolved"
 chroot "$ROOTDIR" sh -c "systemctl enable sshd.service"
 chroot "$ROOTDIR" sh -c "systemctl enable hw-management.service"
 chroot "$ROOTDIR" sh -c "systemctl enable lldpd.service"
-chroot "$ROOTDIR" sh -c "systemctl enable ntp.service"
 chroot "$ROOTDIR" sh -c "systemctl enable rsyslog.service"
+chroot "$ROOTDIR" sh -c "systemctl enable frr.service"
 
 chroot "$ROOTDIR" sh -c "locale-gen en_US.UTF-8"
 chroot "$ROOTDIR" sh -c "update-locale LANG=en_US.UTF-8"
@@ -153,5 +184,13 @@ rm -rf "$ROOTDIR/var/lib/apt/lists"/*
 chroot "$ROOTDIR" sh -c "umount /proc; umount /sys; umount /dev/pts"
 
 # pack image
+if [ "$COMPRESS" = "xz" ]; then
+    ARGS="-cpJf"
+else
+    COMPRESS="gz"
+    ARGS="-cpzf"
+fi
+ROOTFS_FILE="ubuntu1804-nosu-$NOS_VERSION.tar.$COMPRESS"
+
 echo "== Packing rootfs into $ROOTFS_FILE"
-tar -C "$ROOTDIR" -cpJf "./$ROOTFS_FILE" .
+tar -C "$ROOTDIR" "$ARGS" "./$ROOTFS_FILE" .

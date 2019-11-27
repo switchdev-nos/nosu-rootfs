@@ -7,4 +7,4 @@ services:
     volumes:
       - ".:/mnt"
     working_dir: /mnt
-    command: [/mnt/build.sh ]
+    command: [ "/mnt/build.sh", "/mnt/env/default" ]
