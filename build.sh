@@ -2,17 +2,7 @@
 
 ROOTCONF_DIR="./rootconf"
 ROOTDIR="/tmp/rootfs"
-UBUNTU_BASE_URL="http://cdimage.ubuntu.com/ubuntu-base/releases/18.04.3/release/ubuntu-base-18.04-base-amd64.tar.gz"
-FWURL="https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/mellanox"
 FWDIR="$ROOTDIR/lib/firmware/mellanox"
-FRRVER="frr-stable"
-TLABEL=NOS
-TIMEZONE="Europe/Moscow"
-
-HOSTNAME=mellanox
-USERNAME=admin
-USERPASS=admin
-ROOTPASS=root
 
 fail() {
     [ "$1" != "" ] && echo $1
@@ -44,7 +34,7 @@ fi
 
 echo "== Loading Ubuntu base image into $ROOTDIR"
 mkdir -p $ROOTDIR
-curl $UBUNTU_BASE_URL | tar -xz -C /tmp/rootfs
+curl $NOSU_UBUNTU_BASE_URL | tar -xz -C /tmp/rootfs
 
 echo "== Copying custom packages"
 # copy custom kernel
@@ -56,15 +46,19 @@ cp -Rf ./packages "$ROOTDIR/tmp"
 # download mellanox firmware
 echo "== Loading Mellanox switch firmware"
 mkdir -p $FWDIR
-for file in $(curl -s $FWURL |
+for file in $(curl -s $NOSU_FWURL |
                    sed -e 's/\(<[^<][^<]*>\)//g' |
                    grep mlxsw); do
-    curl -s -o "$FWDIR/$file" "$FWURL/$file"
+    curl -s -o "$FWDIR/$file" "$NOSU_FWURL/$file"
 done
 
 # mount fs
 echo "== Preparing rootfs"
 chroot "$ROOTDIR" sh -c "mount -t proc /proc /proc; mount -t sysfs /sys /sys; mount -t devpts devpts /dev/pts"
+mknod "$ROOTDIR"/dev/null c 1 3
+mknod "$ROOTDIR"/dev/random c 1 8
+mknod "$ROOTDIR"/dev/urandom c 1 9
+chmod 666 "$ROOTDIR"/dev/{null,random}
 
 ## configure dns
 chroot "$ROOTDIR" sh -c "rm -f /etc/resolv.conf"
@@ -72,7 +66,7 @@ chroot "$ROOTDIR" sh -c "echo 'nameserver 8.8.8.8' > /etc/resolv.conf"
 
 ## instal packages
 echo "== Installing packages"
-chroot "$ROOTDIR" sh -c "apt -yqq update --no-install-recommends && apt -yqq upgrade --no-install-recommends"
+chroot "$ROOTDIR" sh -c "apt -yqq update --no-install-recommends"
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yqq upgrade --no-install-recommends"
 
 #### systemd
@@ -88,7 +82,7 @@ chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-rec
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install openssh-server update-inetd telnetd snmpd snmptrapd ntp isc-dhcp-relay isc-dhcp-client"
 
 #### network tools
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install iproute2 libnl-route-3-200 ethtool bridge-utils net-tools iputils-ping traceroute tcpdump tshark bwm-ng"
+chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install iproute2 libnl-route-3-200 ethtool bridge-utils net-tools iputils-ping traceroute tcpdump tshark bwm-ng bc"
 
 #### tools
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install sudo rsyslog lm-sensors smartmontools curl wget lsb-release gnupg2 ca-certificates vim nano less dnsutils pciutils usbutils lshw dmidecode lsof parted sosreport python locales"
@@ -96,10 +90,10 @@ chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-rec
 RELEASE=$(chroot "$ROOTDIR" sh -c "lsb_release -s -c")
 #### FRR protocol stack
 chroot "$ROOTDIR" sh -c "curl -s https://deb.frrouting.org/frr/keys.asc | apt-key add -"
-chroot "$ROOTDIR" sh -c "echo 'deb https://deb.frrouting.org/frr $RELEASE $FRRVER' | tee /etc/apt/sources.list.d/frr.list"
+chroot "$ROOTDIR" sh -c "echo 'deb https://deb.frrouting.org/frr $RELEASE $NOSU_FRRVER' | tee /etc/apt/sources.list.d/frr.list"
 chroot "$ROOTDIR" sh -c "apt update"
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install frr frr-pythontools"
-chroot "$ROOTDIR" sh -c "echo '#deb https://deb.frrouting.org/frr $RELEASE $FRRVER' | tee /etc/apt/sources.list.d/frr.list"
+chroot "$ROOTDIR" sh -c "echo '#deb https://deb.frrouting.org/frr $RELEASE $NOSU_FRRVER' | tee /etc/apt/sources.list.d/frr.list"
 
 #### Keepalived
 chroot "$ROOTDIR" sh -c "echo 'deb http://ppa.launchpad.net/hnakamur/keepalived/ubuntu $RELEASE main' | tee /etc/apt/sources.list.d/keepalived.list"
@@ -114,16 +108,16 @@ chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-rec
 echo "== Configuring system"
 
 # version information
-if [ -n "$NOS_VERSION" ]; then
+if [ -n "$NOSU_VERSION" ]; then
 echo "VARIANT=nosu" >> "$ROOTDIR/etc/os-release"
-echo "VARIANT_ID=$NOS_VERSION" >> "$ROOTDIR/etc/os-release"
+echo "VARIANT_ID=$NOSU_VERSION" >> "$ROOTDIR/etc/os-release"
 fi
 
 # hostname config
-chroot "$ROOTDIR" sh -c "echo $HOSTNAME > /etc/hostname"
+chroot "$ROOTDIR" sh -c "echo $NOSU_HOSTNAME > /etc/hostname"
 cat << EOF > "$ROOTDIR/etc/hosts"
-127.0.0.1       $HOSTNAME localhost
-::1             $HOSTNAME localhost ip6-localhost ip6-loopback
+127.0.0.1       $NOSU_HOSTNAME localhost
+::1             $NOSU_HOSTNAME localhost ip6-localhost ip6-loopback
 fe00::0         ip6-localnet
 ff02::1         ip6-allnodes
 ff02::2         ip6-allrouters
@@ -132,9 +126,9 @@ EOF
 
 
 # users config
-USERPASSC=$(perl -e "print crypt("$USERPASS","Q4")")
-ROOTPASSC=$(perl -e "print crypt("$ROOTPASS","Q4")")
-chroot "$ROOTDIR" sh -c "useradd -m -s /bin/bash -G sudo -p $USERPASSC $USERNAME"
+USERPASSC=$(perl -e "print crypt("$NOSU_USERPASS","Q4")")
+ROOTPASSC=$(perl -e "print crypt("$NOSU_ROOTPASS","Q4")")
+chroot "$ROOTDIR" sh -c "useradd -m -s /bin/bash -G sudo -p $USERPASSC $NOSU_USERNAME"
 chroot "$ROOTDIR" sh -c "usermod -p $USERPASSC root"
 
 # copy the contents of the rootconf folder to the rootfs
@@ -145,7 +139,7 @@ echo "== Finalizing system config"
 chroot "$ROOTDIR" sh -c "chmod +x /etc/rc.local"
 chroot "$ROOTDIR" sh -c "ssh-keygen -A"
 chroot "$ROOTDIR" sh -c "echo | ssh-keygen -q -t rsa -P ''"
-chroot "$ROOTDIR" sh -c "su - $USERNAME -c 'echo | ssh-keygen -q -t rsa'"
+chroot "$ROOTDIR" sh -c "su - $NOSU_USERNAME -c 'echo | ssh-keygen -q -t rsa'"
 chroot "$ROOTDIR" sh -c "systemctl disable motd-news.timer"
 chroot "$ROOTDIR" sh -c "systemctl disable keepalived.service"
 chroot "$ROOTDIR" sh -c "systemctl disable lldpad.service"
@@ -173,7 +167,7 @@ chroot "$ROOTDIR" sh -c "locale-gen en_US.UTF-8"
 chroot "$ROOTDIR" sh -c "update-locale LANG=en_US.UTF-8"
 chroot "$ROOTDIR" sh -c "locale-gen --purge en_US.UTF-8"
 
-chroot "$ROOTDIR" sh -c "rm -f /etc/localtime && ln -s /usr/share/zoneinfo/$TIMEZONE /etc/localtime"
+chroot "$ROOTDIR" sh -c "rm -f /etc/localtime && ln -s /usr/share/zoneinfo/$NOSU_TIMEZONE /etc/localtime"
 
 # cleanup
 echo "== Cleaning up"
@@ -184,13 +178,13 @@ rm -rf "$ROOTDIR/var/lib/apt/lists"/*
 chroot "$ROOTDIR" sh -c "umount /proc; umount /sys; umount /dev/pts"
 
 # pack image
-if [ "$COMPRESS" = "xz" ]; then
+if [ "$NOSU_COMPRESS" = "xz" ]; then
     ARGS="-cpJf"
 else
-    COMPRESS="gz"
+    NOSU_COMPRESS="gz"
     ARGS="-cpzf"
 fi
-ROOTFS_FILE="ubuntu1804-nosu-$NOS_VERSION.tar.$COMPRESS"
+ROOTFS_FILE="ubuntu1804-nosu-$NOSU_VERSION.tar.$NOSU_COMPRESS"
 
 echo "== Packing rootfs into $ROOTFS_FILE"
 tar -C "$ROOTDIR" "$ARGS" "./$ROOTFS_FILE" .

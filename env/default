@@ -1,2 +1,13 @@
-NOS_VERSION="0.9.5"
-COMPRESS="xz"
+NOSU_VERSION="0.9.9"
+NOSU_COMPRESS="xz"
+
+NOSU_UBUNTU_BASE_URL="http://cdimage.ubuntu.com/ubuntu-base/releases/18.04.4/release/ubuntu-base-18.04.4-base-amd64.tar.gz"
+NOSU_FWURL="https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/mellanox"
+NOSU_FRRVER="frr-stable"
+NOSU_TLABEL=NOSU
+NOSU_TIMEZONE="Europe/Moscow"
+
+NOSU_HOSTNAME=mellanox
+NOSU_USERNAME=admin
+NOSU_USERPASS=admin
+NOSU_ROOTPASS=root
