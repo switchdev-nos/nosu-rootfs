@@ -43,22 +43,18 @@ cp -Rf ./kernel "$ROOTDIR/tmp"
 # copy custom packages
 cp -Rf ./packages "$ROOTDIR/tmp"
 
-# download mellanox firmware
-echo "== Loading Mellanox switch firmware"
-mkdir -p $FWDIR
-for file in $(curl -s $NOSU_FWURL |
-                   sed -e 's/\(<[^<][^<]*>\)//g' |
-                   grep mlxsw); do
-    curl -s -o "$FWDIR/$file" "$NOSU_FWURL/$file"
-done
-
 # mount fs
 echo "== Preparing rootfs"
-chroot "$ROOTDIR" sh -c "mount -t proc /proc /proc; mount -t sysfs /sys /sys; mount -t devpts devpts /dev/pts"
-mknod "$ROOTDIR"/dev/null c 1 3
-mknod "$ROOTDIR"/dev/random c 1 8
-mknod "$ROOTDIR"/dev/urandom c 1 9
-chmod 666 "$ROOTDIR"/dev/{null,random}
+#mkdir -p "$ROOTDIR"/dev
+#mount --bind /dev/pts "$ROOTDIR"/dev/pts
+#chroot "$ROOTDIR" sh -c "mount -t proc /proc /proc; mount -t sysfs /sys /sys"
+mount -t proc /proc "$ROOTDIR"/proc/
+mount --rbind /sys "$ROOTDIR"/sys/
+mount --rbind /dev "$ROOTDIR"/dev/
+#mknod "$ROOTDIR"/dev/null c 1 3
+#mknod "$ROOTDIR"/dev/random c 1 8
+#mknod "$ROOTDIR"/dev/urandom c 1 9
+#chmod 666 "$ROOTDIR"/dev/{null,random}
 
 ## configure dns
 chroot "$ROOTDIR" sh -c "rm -f /etc/resolv.conf"
@@ -175,7 +171,9 @@ chroot "$ROOTDIR" sh -c "rm -f /etc/resolv.conf && ln -sf /var/run/systemd/resol
 chroot "$ROOTDIR" sh -c "apt autoremove -y && apt clean all"
 rm -rf "$ROOTDIR/tmp"/*
 rm -rf "$ROOTDIR/var/lib/apt/lists"/*
-chroot "$ROOTDIR" sh -c "umount /proc; umount /sys; umount /dev/pts"
+umount -R "$ROOTDIR"/proc/
+umount -R "$ROOTDIR"/sys/
+umount -R "$ROOTDIR"/dev/
 
 # pack image
 if [ "$NOSU_COMPRESS" = "xz" ]; then
@@ -184,7 +182,7 @@ else
     NOSU_COMPRESS="gz"
     ARGS="-cpzf"
 fi
-ROOTFS_FILE="ubuntu1804-nosu-$NOSU_VERSION.tar.$NOSU_COMPRESS"
+ROOTFS_FILE="nosu-rootfs-$NOSU_VERSION.tar.$NOSU_COMPRESS"
 
-echo "== Packing rootfs into $ROOTFS_FILE"
-tar -C "$ROOTDIR" "$ARGS" "./$ROOTFS_FILE" .
+echo "== Packing rootfs into ./image/$ROOTFS_FILE"
+tar -C "$ROOTDIR" "$ARGS" "./image/$ROOTFS_FILE" .
