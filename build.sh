@@ -34,27 +34,20 @@ fi
 
 echo "== Loading Ubuntu base image into $ROOTDIR"
 mkdir -p $ROOTDIR
-curl $NOSU_UBUNTU_BASE_URL | tar -xz -C /tmp/rootfs
+curl $NOSU_UBUNTU_BASE_URL | tar -xz -C $ROOTDIR
 
 echo "== Copying custom packages"
 # copy custom kernel
-cp -Rf ./kernel "$ROOTDIR/tmp"
+rsync -a ./kernel "$ROOTDIR/tmp/"
 
 # copy custom packages
-cp -Rf ./packages "$ROOTDIR/tmp"
+rsync -a ./packages "$ROOTDIR/tmp/"
 
 # mount fs
 echo "== Preparing rootfs"
-#mkdir -p "$ROOTDIR"/dev
-#mount --bind /dev/pts "$ROOTDIR"/dev/pts
-#chroot "$ROOTDIR" sh -c "mount -t proc /proc /proc; mount -t sysfs /sys /sys"
 mount -t proc /proc "$ROOTDIR"/proc/
 mount --rbind /sys "$ROOTDIR"/sys/
 mount --rbind /dev "$ROOTDIR"/dev/
-#mknod "$ROOTDIR"/dev/null c 1 3
-#mknod "$ROOTDIR"/dev/random c 1 8
-#mknod "$ROOTDIR"/dev/urandom c 1 9
-#chmod 666 "$ROOTDIR"/dev/{null,random}
 
 ## configure dns
 chroot "$ROOTDIR" sh -c "rm -f /etc/resolv.conf"
