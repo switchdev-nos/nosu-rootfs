@@ -68,7 +68,7 @@ chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-rec
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install /tmp/kernel/*.deb"
 
 #### network services
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install openssh-server update-inetd telnetd snmpd snmptrapd ntp isc-dhcp-relay isc-dhcp-client"
+chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install openssh-server update-inetd telnetd snmpd snmptrapd ntp isc-dhcp-relay isc-dhcp-client vsftpd"
 
 #### network tools
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install iproute2 libnl-route-3-200 ethtool bridge-utils net-tools iputils-ping traceroute tcpdump tshark bwm-ng bc"
@@ -138,7 +138,6 @@ chroot "$ROOTDIR" sh -c "systemctl disable smartd.service"
 chroot "$ROOTDIR" sh -c "systemctl disable smartmontools.service"
 chroot "$ROOTDIR" sh -c "systemctl disable postfix.service"
 chroot "$ROOTDIR" sh -c "systemctl disable bird.service"
-chroot "$ROOTDIR" sh -c "systemctl disable vsftpd.service"
 chroot "$ROOTDIR" sh -c "systemctl disable inetd.service"
 chroot "$ROOTDIR" sh -c "systemctl disable snmpd.service"
 chroot "$ROOTDIR" sh -c "systemctl disable ntp.service"
