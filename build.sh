@@ -126,6 +126,7 @@ rsync -avz --chown root:root "$ROOTCONF_DIR"/* "$ROOTDIR"
 # post config
 echo "== Finalizing system config"
 chroot "$ROOTDIR" sh -c "chmod +x /etc/rc.local"
+chroot "$ROOTDIR" sh -c "chown -R frr:frr /etc/frr"
 chroot "$ROOTDIR" sh -c "ssh-keygen -A"
 chroot "$ROOTDIR" sh -c "echo | ssh-keygen -q -t rsa -P ''"
 chroot "$ROOTDIR" sh -c "su - $NOSU_USERNAME -c 'echo | ssh-keygen -q -t rsa'"
