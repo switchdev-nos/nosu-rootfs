@@ -68,7 +68,7 @@ chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-rec
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install /tmp/kernel/*.deb"
 
 #### network services
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install openssh-server update-inetd telnetd snmpd snmptrapd ntp isc-dhcp-relay isc-dhcp-client vsftpd"
+chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install openssh-server update-inetd telnetd lldpd snmpd snmptrapd ntp isc-dhcp-relay isc-dhcp-client vsftpd"
 
 #### network tools
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install iproute2 libnl-route-3-200 ethtool bridge-utils net-tools iputils-ping traceroute tcpdump tshark bwm-ng bc"
@@ -132,7 +132,6 @@ chroot "$ROOTDIR" sh -c "echo | ssh-keygen -q -t rsa -P ''"
 chroot "$ROOTDIR" sh -c "su - $NOSU_USERNAME -c 'echo | ssh-keygen -q -t rsa'"
 chroot "$ROOTDIR" sh -c "systemctl disable motd-news.timer"
 chroot "$ROOTDIR" sh -c "systemctl disable keepalived.service"
-chroot "$ROOTDIR" sh -c "systemctl disable lldpad.service"
 chroot "$ROOTDIR" sh -c "systemctl disable isc-dhcp-relay.service"
 chroot "$ROOTDIR" sh -c "systemctl disable isc-dhcp-relay6.service"
 chroot "$ROOTDIR" sh -c "systemctl disable smartd.service"
