@@ -84,12 +84,6 @@ chroot "$ROOTDIR" sh -c "apt update"
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install frr frr-pythontools"
 chroot "$ROOTDIR" sh -c "echo '#deb https://deb.frrouting.org/frr $RELEASE $NOSU_FRRVER' | tee /etc/apt/sources.list.d/frr.list"
 
-#### Keepalived
-chroot "$ROOTDIR" sh -c "echo 'deb http://ppa.launchpad.net/hnakamur/keepalived/ubuntu $RELEASE main' | tee /etc/apt/sources.list.d/keepalived.list"
-chroot "$ROOTDIR" sh -c "apt update"
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install keepalived"
-chroot "$ROOTDIR" sh -c "echo '#deb http://ppa.launchpad.net/hnakamur/keepalived/ubuntu $RELEASE main' | tee /etc/apt/sources.list.d/keepalived.list"
-
 #### custom packages
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install /tmp/packages/*.deb"
 
