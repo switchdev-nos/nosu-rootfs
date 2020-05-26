@@ -71,7 +71,7 @@ chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-rec
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install openssh-server update-inetd telnetd lldpd snmpd snmptrapd ntp isc-dhcp-relay isc-dhcp-client vsftpd"
 
 #### network tools
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install iproute2 libnl-route-3-200 ethtool bridge-utils net-tools iputils-ping traceroute tcpdump tshark bwm-ng bc"
+chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install iproute2 libnl-route-3-200 ethtool bridge-utils net-tools iputils-ping traceroute tcpdump tshark bwm-ng bc git"
 
 #### tools
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install sudo rsyslog lm-sensors smartmontools curl wget lsb-release gnupg2 ca-certificates vim nano less dnsutils pciutils usbutils lshw dmidecode lsof parted sosreport python locales"
