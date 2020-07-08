@@ -1,4 +1,4 @@
-NOSU_VERSION="1.0.1"
+NOSU_VERSION="1.0.2"
 NOSU_COMPRESS="xz"
 
 NOSU_UBUNTU_BASE_URL="http://cdimage.ubuntu.com/ubuntu-base/releases/18.04.4/release/ubuntu-base-18.04.4-base-amd64.tar.gz"
