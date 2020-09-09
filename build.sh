@@ -85,7 +85,7 @@ chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-rec
 chroot "$ROOTDIR" sh -c "echo '#deb https://deb.frrouting.org/frr $RELEASE $NOSU_FRRVER' | tee /etc/apt/sources.list.d/frr.list"
 
 #### custom packages
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install /tmp/packages/*.deb"
+chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install --allow-downgrades /tmp/packages/*.deb"
 
 # CONFIGURE ADDITIONAL SERVICES
 echo "== Configuring system"
