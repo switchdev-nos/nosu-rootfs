@@ -82,7 +82,6 @@ chroot "$ROOTDIR" sh -c "curl -s https://deb.frrouting.org/frr/keys.asc | apt-ke
 chroot "$ROOTDIR" sh -c "echo 'deb https://deb.frrouting.org/frr $RELEASE $NOSU_FRRVER' | tee /etc/apt/sources.list.d/frr.list"
 chroot "$ROOTDIR" sh -c "apt update"
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install frr frr-pythontools"
-chroot "$ROOTDIR" sh -c "echo '#deb https://deb.frrouting.org/frr $RELEASE $NOSU_FRRVER' | tee /etc/apt/sources.list.d/frr.list"
 
 #### custom packages
 chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends --allow-downgrades install /tmp/packages/*.deb"
@@ -140,7 +139,8 @@ chroot "$ROOTDIR" sh -c "systemctl disable ptmd.service"
 chroot "$ROOTDIR" sh -c "systemctl disable mlnx-eswitch.service"
 chroot "$ROOTDIR" sh -c "systemctl enable systemd-resolved"
 chroot "$ROOTDIR" sh -c "systemctl enable sshd.service"
-chroot "$ROOTDIR" sh -c "systemctl enable hw-management.service"
+chroot "$ROOTDIR" sh -c "systemctl disable hw-management.service"
+chroot "$ROOTDIR" sh -c "systemctl disable hw-management-tc.service"
 chroot "$ROOTDIR" sh -c "systemctl enable lldpd.service"
 chroot "$ROOTDIR" sh -c "systemctl enable rsyslog.service"
 chroot "$ROOTDIR" sh -c "systemctl enable frr.service"
@@ -150,6 +150,7 @@ chroot "$ROOTDIR" sh -c "update-locale LANG=en_US.UTF-8"
 chroot "$ROOTDIR" sh -c "locale-gen --purge en_US.UTF-8"
 
 chroot "$ROOTDIR" sh -c "rm -f /etc/localtime && ln -s /usr/share/zoneinfo/$NOSU_TIMEZONE /etc/localtime"
+chroot "$ROOTDIR" sh -c "ln -s /bin/ip /usr/bin/ip && ln -s /bin/ip /usr/sbin/ip"
 
 # cleanup
 echo "== Cleaning up"

@@ -11,3 +11,18 @@ iface mgmt
 auto eth0
 iface eth0 inet dhcp
     vrf mgmt
+
+#auto swp1
+#iface swp1
+
+#auto swp2
+#iface swp2
+
+#auto bridge
+#iface bridge
+#    mtu 9000
+#    bridge-vlan-aware yes
+#    bridge-always-up yes
+#    bridge-mcsnoop no
+#    bridge-stp yes
+#    bridge-ports swp1 swp2

@@ -1,0 +1,9 @@
+{
+    "address": {
+        "defaults": {"mtu": "9216"}
+    },
+    "bridge": {
+        "module_globals": {"bridge_set_static_mac_from_port": "yes",
+                           "bridge_always_up_dummy_brport": "dummy0"}
+        }
+}
