@@ -1,0 +1,13 @@
+[Unit]
+Description=Pre-networking init script
+ConditionPathExists=/etc/network/pre-networking.sh
+Before=networking.service
+Wants=networking.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/etc/network/pre-networking.sh
+
+[Install]
+WantedBy=networking.service
