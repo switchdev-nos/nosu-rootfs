@@ -3,6 +3,7 @@
 ROOTCONF_DIR="./rootconf"
 ROOTDIR="/tmp/rootfs"
 FWDIR="$ROOTDIR/lib/firmware/mellanox"
+sh="/usr/bin/bash"
 
 fail() {
     [ "$1" != "" ] && echo $1
@@ -50,41 +51,41 @@ mount --rbind /sys "$ROOTDIR"/sys/
 mount --rbind /dev "$ROOTDIR"/dev/
 
 ## configure dns
-chroot "$ROOTDIR" sh -c "rm -f /etc/resolv.conf"
-chroot "$ROOTDIR" sh -c "echo 'nameserver 8.8.8.8' > /etc/resolv.conf"
+chroot "$ROOTDIR" $sh -c "rm -f /etc/resolv.conf"
+chroot "$ROOTDIR" $sh -c "echo 'nameserver 8.8.8.8' > /etc/resolv.conf"
 
 ## instal packages
 echo "== Installing packages"
-chroot "$ROOTDIR" sh -c "apt -yqq update --no-install-recommends"
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yqq upgrade --no-install-recommends"
+chroot "$ROOTDIR" $sh -c "apt -yqq update --no-install-recommends"
+chroot "$ROOTDIR" $sh -c "DEBIAN_FRONTEND=noninteractive apt -yqq upgrade --no-install-recommends"
 
 #### systemd
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install systemd systemd-sysv udev dbus ifupdown2"
+chroot "$ROOTDIR" $sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install apt-utils systemd systemd-sysv udev dbus"
 
 #### grub
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install grub-pc initramfs-tools"
+chroot "$ROOTDIR" $sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install grub-pc initramfs-tools"
 
 #### custom kernel
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install /tmp/kernel/*.deb"
+chroot "$ROOTDIR" $sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install /tmp/kernel/*.deb"
 
 #### network services
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install openssh-server update-inetd telnetd lldpd snmpd snmptrapd ntp isc-dhcp-relay isc-dhcp-client vsftpd"
+chroot "$ROOTDIR" $sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install openssh-server update-inetd telnetd lldpd snmpd snmptrapd ntp isc-dhcp-relay isc-dhcp-client vsftpd"
 
 #### network tools
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install iproute2 libnl-route-3-200 ethtool bridge-utils net-tools iputils-ping traceroute tcpdump tshark bwm-ng bc git"
+chroot "$ROOTDIR" $sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install iproute2 libnl-route-3-200 ethtool bridge-utils net-tools iputils-ping traceroute tcpdump tshark bwm-ng bc git"
 
 #### tools
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install sudo rsyslog lm-sensors smartmontools curl wget lsb-release gnupg2 ca-certificates vim nano less dnsutils pciutils usbutils lshw dmidecode lsof parted sosreport python locales"
+chroot "$ROOTDIR" $sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install sudo rsyslog lm-sensors smartmontools curl wget lsb-release gnupg2 ca-certificates vim nano less dnsutils pciutils usbutils lshw dmidecode lsof parted sosreport locales i2c-tools libpfm4 bpfcc-tools"
 
-RELEASE=$(chroot "$ROOTDIR" sh -c "lsb_release -s -c")
+RELEASE=$(chroot "$ROOTDIR" $sh -c "lsb_release -s -c")
 #### FRR protocol stack
-chroot "$ROOTDIR" sh -c "curl -s https://deb.frrouting.org/frr/keys.asc | apt-key add -"
-chroot "$ROOTDIR" sh -c "echo 'deb https://deb.frrouting.org/frr $RELEASE $NOSU_FRRVER' | tee /etc/apt/sources.list.d/frr.list"
-chroot "$ROOTDIR" sh -c "apt update"
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install frr frr-pythontools"
+chroot "$ROOTDIR" $sh -c "curl -s https://deb.frrouting.org/frr/keys.asc | apt-key add -"
+chroot "$ROOTDIR" $sh -c "echo 'deb https://deb.frrouting.org/frr $RELEASE $NOSU_FRRVER' | tee /etc/apt/sources.list.d/frr.list"
+chroot "$ROOTDIR" $sh -c "apt update"
+chroot "$ROOTDIR" $sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends install frr frr-pythontools"
 
 #### custom packages
-chroot "$ROOTDIR" sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends --allow-downgrades install /tmp/packages/*.deb"
+chroot "$ROOTDIR" $sh -c "DEBIAN_FRONTEND=noninteractive apt -yq --no-install-recommends --allow-downgrades install /tmp/packages/*.deb"
 
 # CONFIGURE ADDITIONAL SERVICES
 echo "== Configuring system"
@@ -96,7 +97,7 @@ echo "VARIANT_ID=$NOSU_VERSION" >> "$ROOTDIR/etc/os-release"
 fi
 
 # hostname config
-chroot "$ROOTDIR" sh -c "echo $NOSU_HOSTNAME > /etc/hostname"
+chroot "$ROOTDIR" $sh -c "echo $NOSU_HOSTNAME > /etc/hostname"
 cat << EOF > "$ROOTDIR/etc/hosts"
 127.0.0.1       $NOSU_HOSTNAME localhost
 ::1             $NOSU_HOSTNAME localhost ip6-localhost ip6-loopback
@@ -110,55 +111,51 @@ EOF
 # users config
 USERPASSC=$(perl -e "print crypt("$NOSU_USERPASS","Q4")")
 ROOTPASSC=$(perl -e "print crypt("$NOSU_ROOTPASS","Q4")")
-chroot "$ROOTDIR" sh -c "useradd -m -s /bin/bash -G sudo -p $USERPASSC $NOSU_USERNAME"
-chroot "$ROOTDIR" sh -c "usermod -p $USERPASSC root"
+chroot "$ROOTDIR" $sh -c "useradd -m -s /bin/bash -G sudo -p $USERPASSC $NOSU_USERNAME"
+chroot "$ROOTDIR" $sh -c "usermod -p $USERPASSC root"
 
 # copy the contents of the rootconf folder to the rootfs
 rsync -avz --chown root:root "$ROOTCONF_DIR"/* "$ROOTDIR"
 
 # post config
 echo "== Finalizing system config"
-chroot "$ROOTDIR" sh -c "chmod +x /etc/rc.local"
-chroot "$ROOTDIR" sh -c "chown -R frr:frr /etc/frr"
-chroot "$ROOTDIR" sh -c "ssh-keygen -A"
-chroot "$ROOTDIR" sh -c "echo | ssh-keygen -q -t rsa -P ''"
-chroot "$ROOTDIR" sh -c "su - $NOSU_USERNAME -c 'echo | ssh-keygen -q -t rsa'"
-chroot "$ROOTDIR" sh -c "systemctl disable motd-news.timer"
-chroot "$ROOTDIR" sh -c "systemctl disable keepalived.service"
-chroot "$ROOTDIR" sh -c "systemctl disable isc-dhcp-relay.service"
-chroot "$ROOTDIR" sh -c "systemctl disable isc-dhcp-relay6.service"
-chroot "$ROOTDIR" sh -c "systemctl disable smartd.service"
-chroot "$ROOTDIR" sh -c "systemctl disable smartmontools.service"
-chroot "$ROOTDIR" sh -c "systemctl disable postfix.service"
-chroot "$ROOTDIR" sh -c "systemctl disable bird.service"
-chroot "$ROOTDIR" sh -c "systemctl disable inetd.service"
-chroot "$ROOTDIR" sh -c "systemctl disable snmpd.service"
-chroot "$ROOTDIR" sh -c "systemctl disable ntp.service"
-chroot "$ROOTDIR" sh -c "systemctl disable vsftpd.service"
-chroot "$ROOTDIR" sh -c "systemctl disable mlnx-bf-ctl.service"
-chroot "$ROOTDIR" sh -c "systemctl enable pre-networking.service"
-chroot "$ROOTDIR" sh -c "systemctl enable systemd-resolved"
-chroot "$ROOTDIR" sh -c "systemctl enable sshd.service"
-chroot "$ROOTDIR" sh -c "systemctl disable hw-management.service"
-chroot "$ROOTDIR" sh -c "systemctl disable hw-management-tc.service"
-chroot "$ROOTDIR" sh -c "systemctl enable lldpd.service"
-chroot "$ROOTDIR" sh -c "systemctl enable rsyslog.service"
-chroot "$ROOTDIR" sh -c "systemctl enable frr.service"
-chroot "$ROOTDIR" sh -c "systemctl enable ntp.service"
-chroot "$ROOTDIR" sh -c "systemctl enable ntp@mgmt.service"
-chroot "$ROOTDIR" sh -c "systemctl disable ntp.service"
+chroot "$ROOTDIR" $sh -c "chmod +x /etc/network/pre-networking.sh"
+chroot "$ROOTDIR" $sh -c "chown -R frr:frr /etc/frr"
+chroot "$ROOTDIR" $sh -c "ssh-keygen -A"
+chroot "$ROOTDIR" $sh -c "echo | ssh-keygen -q -t rsa -P ''"
+chroot "$ROOTDIR" $sh -c "su - $NOSU_USERNAME -c 'echo | ssh-keygen -q -t rsa'"
+chroot "$ROOTDIR" $sh -c "systemctl disable motd-news.timer"
+chroot "$ROOTDIR" $sh -c "systemctl disable keepalived.service"
+chroot "$ROOTDIR" $sh -c "systemctl disable isc-dhcp-relay.service"
+chroot "$ROOTDIR" $sh -c "systemctl disable isc-dhcp-relay6.service"
+chroot "$ROOTDIR" $sh -c "systemctl disable smartd.service"
+chroot "$ROOTDIR" $sh -c "systemctl disable smartmontools.service"
+chroot "$ROOTDIR" $sh -c "systemctl disable postfix.service"
+chroot "$ROOTDIR" $sh -c "systemctl disable bird.service"
+chroot "$ROOTDIR" $sh -c "systemctl disable inetd.service"
+chroot "$ROOTDIR" $sh -c "systemctl disable snmpd.service"
+chroot "$ROOTDIR" $sh -c "systemctl disable vsftpd.service"
+chroot "$ROOTDIR" $sh -c "systemctl enable pre-networking.service"
+chroot "$ROOTDIR" $sh -c "systemctl enable systemd-resolved"
+chroot "$ROOTDIR" $sh -c "systemctl enable sshd.service"
+chroot "$ROOTDIR" $sh -c "systemctl disable hw-management.service"
+chroot "$ROOTDIR" $sh -c "systemctl disable hw-management-tc.service"
+chroot "$ROOTDIR" $sh -c "systemctl enable lldpd.service"
+chroot "$ROOTDIR" $sh -c "systemctl enable rsyslog.service"
+chroot "$ROOTDIR" $sh -c "systemctl enable frr.service"
+chroot "$ROOTDIR" $sh -c "systemctl disable ntp.service"
+chroot "$ROOTDIR" $sh -c "ln -s /etc/systemd/system/ntp@.service /etc/systemd/system/multi-user.target.wants/ntp@mgmt.service"
 
-chroot "$ROOTDIR" sh -c "locale-gen en_US.UTF-8"
-chroot "$ROOTDIR" sh -c "update-locale LANG=en_US.UTF-8"
-chroot "$ROOTDIR" sh -c "locale-gen --purge en_US.UTF-8"
+chroot "$ROOTDIR" $sh -c "locale-gen en_US.UTF-8"
+chroot "$ROOTDIR" $sh -c "update-locale LANG=en_US.UTF-8"
+chroot "$ROOTDIR" $sh -c "locale-gen --purge en_US.UTF-8"
 
-chroot "$ROOTDIR" sh -c "rm -f /etc/localtime && ln -s /usr/share/zoneinfo/$NOSU_TIMEZONE /etc/localtime"
-chroot "$ROOTDIR" sh -c "ln -s /bin/ip /usr/bin/ip && ln -s /bin/ip /usr/sbin/ip"
+chroot "$ROOTDIR" $sh -c "rm -f /etc/localtime && ln -s /usr/share/zoneinfo/$NOSU_TIMEZONE /etc/localtime"
 
 # cleanup
 echo "== Cleaning up"
-chroot "$ROOTDIR" sh -c "rm -f /etc/resolv.conf && ln -sf /var/run/systemd/resolve/resolv.conf /etc/resolv.conf"
-chroot "$ROOTDIR" sh -c "apt autoremove -y && apt clean all"
+chroot "$ROOTDIR" $sh -c "rm -f /etc/resolv.conf && ln -sf /var/run/systemd/resolve/resolv.conf /etc/resolv.conf"
+chroot "$ROOTDIR" $sh -c "apt autoremove -y && apt clean all"
 rm -rf "$ROOTDIR/tmp"/*
 rm -rf "$ROOTDIR/var/lib/apt/lists"/*
 umount -R "$ROOTDIR"/proc/
